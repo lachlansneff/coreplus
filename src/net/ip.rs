@@ -1,5 +1,9 @@
-use core::{cmp::Ordering, fmt::{self, Write as FmtWrite}, str};
 use crate::io::Write as _;
+use core::{
+    cmp::Ordering,
+    fmt::{self, Write as FmtWrite},
+    str,
+};
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -280,7 +284,9 @@ impl Ipv4Addr {
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         // `s_addr` is stored as BE on all machine and the array is in BE order.
         // So the native endian conversion method is used so that it's never swapped.
-        Ipv4Addr { inner: u32::from_ne_bytes([a, b, c, d]) }
+        Ipv4Addr {
+            inner: u32::from_ne_bytes([a, b, c, d]),
+        }
     }
 
     /// An IPv4 address with the address pointing to localhost: `127.0.0.1`
@@ -810,14 +816,23 @@ impl fmt::Display for Ipv4Addr {
         let octets = self.octets();
         // Fast Path: if there's no alignment stuff, write directly to the buffer
         if fmt.precision().is_none() && fmt.width().is_none() {
-            write!(fmt, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+            write!(
+                fmt,
+                "{}.{}.{}.{}",
+                octets[0], octets[1], octets[2], octets[3]
+            )
         } else {
             const IPV4_BUF_LEN: usize = 15; // Long enough for the longest possible IPv4 address
             let mut buf = [0u8; IPV4_BUF_LEN];
             let mut buf_slice = &mut buf[..];
 
             // Note: The call to write should never fail, hence the unwrap
-            write!(buf_slice, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
+            write!(
+                buf_slice,
+                "{}.{}.{}.{}",
+                octets[0], octets[1], octets[2], octets[3]
+            )
+            .unwrap();
             let len = IPV4_BUF_LEN - buf_slice.len();
 
             // This unsafe is OK because we know what is being written to the buffer
@@ -976,14 +991,22 @@ impl Ipv6Addr {
         ];
         Ipv6Addr {
             inner: [
-                addr16[0][0], addr16[0][1],
-                addr16[1][0], addr16[1][1],
-                addr16[2][0], addr16[2][1],
-                addr16[3][0], addr16[3][1],
-                addr16[4][0], addr16[4][1],
-                addr16[5][0], addr16[5][1],
-                addr16[6][0], addr16[6][1],
-                addr16[7][0], addr16[7][1],
+                addr16[0][0],
+                addr16[0][1],
+                addr16[1][0],
+                addr16[1][1],
+                addr16[2][0],
+                addr16[2][1],
+                addr16[3][0],
+                addr16[3][1],
+                addr16[4][0],
+                addr16[4][1],
+                addr16[5][0],
+                addr16[5][1],
+                addr16[6][0],
+                addr16[6][1],
+                addr16[7][0],
+                addr16[7][1],
             ],
         }
     }
@@ -1613,9 +1636,7 @@ impl From<[u8; 16]> for Ipv6Addr {
     /// ```
     #[inline]
     fn from(octets: [u8; 16]) -> Ipv6Addr {
-        Ipv6Addr {
-            inner: octets
-        }
+        Ipv6Addr { inner: octets }
     }
 }
 

@@ -1,15 +1,18 @@
 //! Networking traits
 
-use core::{pin::Pin, task::{Context, Poll}};
+use core::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
+mod addr;
 mod ip;
+mod parser;
 #[cfg(feature = "std")]
 mod std_impl;
-mod addr;
-mod parser;
 
+pub use self::addr::{GetSocketAddrs, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
-pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, GetSocketAddrs, ToSocketAddrs};
 pub use self::parser::AddrParseError;
 #[cfg(feature = "std")]
 pub use self::std_impl::*;

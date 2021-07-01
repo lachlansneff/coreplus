@@ -1,7 +1,9 @@
 use core::{fmt, option, str};
 
-use crate::{io::Write, net::{IpAddr, Ipv4Addr, Ipv6Addr, AddrParseError}};
-
+use crate::{
+    io::Write,
+    net::{AddrParseError, IpAddr, Ipv4Addr, Ipv6Addr},
+};
 
 /// An internet socket address, either IPv4 or IPv6.
 ///
@@ -247,10 +249,7 @@ impl SocketAddrV4 {
     /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
     /// ```
     pub fn new(ip: Ipv4Addr, port: u16) -> SocketAddrV4 {
-        SocketAddrV4 {
-            ip,
-            port,
-        }
+        SocketAddrV4 { ip, port }
     }
 
     /// Returns the IP address associated with this socket address.
@@ -685,7 +684,8 @@ impl<T: GetSocketAddrs> ToSocketAddrs<T> for (&str, u16) {
             return Ok(OneOrMany::one(SocketAddr::V6(addr)));
         }
 
-        get.get_socket_addrs(host, port).map(|iter| OneOrMany::Many(iter))
+        get.get_socket_addrs(host, port)
+            .map(|iter| OneOrMany::Many(iter))
     }
 }
 
@@ -707,7 +707,8 @@ impl<T: GetSocketAddrs> ToSocketAddrs<T> for str {
         let (host, port_str) = self.rsplit_once(':').ok_or(AddrParseError(()))?;
         let port: u16 = port_str.parse().map_err(|_| AddrParseError(()))?;
 
-        get.get_socket_addrs(host, port).map(|iter| OneOrMany::Many(iter))
+        get.get_socket_addrs(host, port)
+            .map(|iter| OneOrMany::Many(iter))
     }
 }
 
@@ -753,7 +754,12 @@ impl From<std::net::SocketAddrV4> for SocketAddr {
 #[cfg(feature = "std")]
 impl From<std::net::SocketAddrV6> for SocketAddrV6 {
     fn from(addr: std::net::SocketAddrV6) -> Self {
-        Self::new((*addr.ip()).into(), addr.port(), addr.flowinfo(), addr.scope_id())
+        Self::new(
+            (*addr.ip()).into(),
+            addr.port(),
+            addr.flowinfo(),
+            addr.scope_id(),
+        )
     }
 }
 
@@ -793,7 +799,12 @@ impl From<SocketAddrV4> for std::net::SocketAddr {
 #[cfg(feature = "std")]
 impl From<SocketAddrV6> for std::net::SocketAddrV6 {
     fn from(addr: SocketAddrV6) -> Self {
-        Self::new((*addr.ip()).into(), addr.port(), addr.flowinfo(), addr.scope_id())
+        Self::new(
+            (*addr.ip()).into(),
+            addr.port(),
+            addr.flowinfo(),
+            addr.scope_id(),
+        )
     }
 }
 

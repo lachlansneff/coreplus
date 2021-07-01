@@ -1,4 +1,6 @@
-use crate::net::{AsyncRecvFrom, AsyncSendTo, IpAddr, SocketAddr, GetSocketAddrs, MulticastSocket, AddrParseError};
+use crate::net::{
+    AddrParseError, AsyncRecvFrom, AsyncSendTo, GetSocketAddrs, IpAddr, MulticastSocket, SocketAddr,
+};
 use core::{
     pin::Pin,
     task::{Context, Poll},
@@ -16,16 +18,16 @@ impl GetSocketAddrs for StdGetSocketAddrs {
 
     fn get_socket_addrs(&self, host: &str, port: u16) -> Result<Self::Iter, Self::Error> {
         let iter = <(&str, u16) as std::net::ToSocketAddrs>::to_socket_addrs(&(host, port))?;
-        Ok(iter.map(Into::<SocketAddr>::into).collect::<Vec<_>>().into_iter())
+        Ok(iter
+            .map(Into::<SocketAddr>::into)
+            .collect::<Vec<_>>()
+            .into_iter())
     }
 }
 
 impl From<AddrParseError> for std::io::Error {
     fn from(_: AddrParseError) -> Self {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "address parsing error",
-        )
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "address parsing error")
     }
 }
 
@@ -63,12 +65,16 @@ impl MulticastSocket for std::net::UdpSocket {
         let local = self.local_addr()?;
         match &(addr.into(), local) {
             (IpAddr::V4(addr), SocketAddr::V4(local)) => self.join_multicast_v4(addr, local.ip()),
-            (IpAddr::V4(addr), SocketAddr::V6(local)) => self.join_multicast_v6(&addr.to_ipv6_mapped(), local.scope_id()),
-            (IpAddr::V6(addr), SocketAddr::V6(local)) => self.join_multicast_v6(addr, local.scope_id()),
+            (IpAddr::V4(addr), SocketAddr::V6(local)) => {
+                self.join_multicast_v6(&addr.to_ipv6_mapped(), local.scope_id())
+            }
+            (IpAddr::V6(addr), SocketAddr::V6(local)) => {
+                self.join_multicast_v6(addr, local.scope_id())
+            }
             _ => Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "multicast-addr and local-addr type mismatch",
-            ))
+            )),
         }
     }
 
@@ -77,12 +83,16 @@ impl MulticastSocket for std::net::UdpSocket {
         let local = self.local_addr()?;
         match &(addr.into(), local) {
             (IpAddr::V4(addr), SocketAddr::V4(local)) => self.leave_multicast_v4(addr, local.ip()),
-            (IpAddr::V4(addr), SocketAddr::V6(local)) => self.leave_multicast_v6(&addr.to_ipv6_mapped(), local.scope_id()),
-            (IpAddr::V6(addr), SocketAddr::V6(local)) => self.leave_multicast_v6(addr, local.scope_id()),
+            (IpAddr::V4(addr), SocketAddr::V6(local)) => {
+                self.leave_multicast_v6(&addr.to_ipv6_mapped(), local.scope_id())
+            }
+            (IpAddr::V6(addr), SocketAddr::V6(local)) => {
+                self.leave_multicast_v6(addr, local.scope_id())
+            }
             _ => Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "multicast-addr and local-addr type mismatch",
-            ))
+            )),
         }
     }
 }

@@ -3,8 +3,8 @@
 //! This module is "publicly exported" through the `FromStr` implementations
 //! below.
 
-use core::{convert::TryInto as _, fmt, str::FromStr};
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use core::{convert::TryInto as _, fmt, str::FromStr};
 
 trait ReadNumberHelper: Sized {
     const ZERO: Self;
@@ -35,7 +35,9 @@ struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn new(input: &'a str) -> Parser<'a> {
-        Parser { state: input.as_bytes() }
+        Parser {
+            state: input.as_bytes(),
+        }
     }
 
     /// Run a parser, and restore the pre-parse state if it fails.
@@ -78,7 +80,8 @@ impl<'a> Parser<'a> {
     /// Read the next character from the input if it matches the target.
     fn read_given_char(&mut self, target: char) -> Option<()> {
         self.read_atomically(|p| {
-            p.read_char().and_then(|c| if c == target { Some(()) } else { None })
+            p.read_char()
+                .and_then(|c| if c == target { Some(()) } else { None })
         })
     }
 
@@ -121,7 +124,11 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            if digit_count == 0 { None } else { Some(result) }
+            if digit_count == 0 {
+                None
+            } else {
+                Some(result)
+            }
         })
     }
 
@@ -214,7 +221,9 @@ impl<'a> Parser<'a> {
 
     /// Read an IP Address, either IPv4 or IPv6.
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
-        self.read_ipv4_addr().map(IpAddr::V4).or_else(move || self.read_ipv6_addr().map(IpAddr::V6))
+        self.read_ipv4_addr()
+            .map(IpAddr::V4)
+            .or_else(move || self.read_ipv6_addr().map(IpAddr::V6))
     }
 
     /// Read a `:` followed by a port in base 10.

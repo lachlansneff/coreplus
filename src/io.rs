@@ -1,6 +1,12 @@
 //! I/O traits
 
-use core::{cmp, convert::Infallible, fmt, pin::Pin, task::{Context, Poll}, mem};
+use core::{
+    cmp,
+    convert::Infallible,
+    fmt, mem,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 #[cfg(feature = "std")]
 mod std_impl;
@@ -29,15 +35,9 @@ pub trait AsyncWrite {
         buf: &[u8],
     ) -> Poll<Result<usize, Self::Error>>;
 
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>>;
-    
-    fn poll_close(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>>;
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
 }
 
 /// Read bytes.
@@ -92,7 +92,10 @@ pub trait Write {
             }
         }
 
-        let mut output = Adaptor { inner: self, error: Ok(()) };
+        let mut output = Adaptor {
+            inner: self,
+            error: Ok(()),
+        };
         match fmt::write(&mut output, fmt) {
             Ok(()) => Ok(()),
             Err(..) => {
