@@ -12,15 +12,19 @@ The batteries for core that you never knew you needed: core+
 Core+ contains traits that make it possible to write `no_std` libraries that
 are fully generic on the network and I/O stack.
 
-## `no_std`
-This crate can be used without the standard library by disabling the `std` feature.
+## Using the standard library
+This crate can be used with standard library types by enabling the `std` feature.
 
 ```toml
 [dependencies]
-coreplus = { version = "0.1.0", default-features = false }
+coreplus = { version = "0.1.0", features = ["std"] }
 ```
 
 ## The unstable feature
 Enabling the `unstable` feature will add `*_vectored` methods to the [`io::AsyncRead`], [`io::AsyncWrite`],
 [`io::Read`], and [`io::Write`] traits.
 
+```toml
+[dependencies]
+coreplus = { version = "0.1.0", features = ["unstable"] }
+```
