@@ -1,6 +1,6 @@
 //! I/O traits
 
-use core::{pin::Pin, task::{Context, Poll}};
+use core::{cmp, convert::Infallible, fmt, pin::Pin, task::{Context, Poll}, mem};
 
 #[cfg(feature = "std")]
 mod std_impl;
@@ -8,56 +8,20 @@ mod std_impl;
 #[cfg(feature = "std")]
 pub use self::std_impl::*;
 
-#[cfg(feature = "unstable")]
-#[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-pub trait IoSliceMut<'a>: core::ops::DerefMut<Target = [u8]> + Sized {
-    fn new(buf: &'a mut [u8]) -> Self;
-}
-
-#[cfg(feature = "unstable")]
-#[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-pub trait IoSlice<'a>: core::ops::Deref<Target = [u8]> + Sized {
-    fn new(buf: &'a [u8]) -> Self;
-}
-
 /// Read bytes asynchronously.
 pub trait AsyncRead {
     type Error;
-
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    type IoSliceMut<'a>: IoSliceMut<'a>;
 
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<Result<usize, Self::Error>>;
-
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    fn poll_read_vectored(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        bufs: &mut [Self::IoSliceMut<'_>],
-    ) -> Poll<Result<usize, Self::Error>> {
-        for buf in bufs {
-            if !buf.is_empty() {
-                return self.poll_read(cx, buf);
-            }
-        }
-
-        self.poll_read(cx, &mut [])
-    }
 }
 
 /// Write bytes asynchronously.
 pub trait AsyncWrite {
     type Error;
-
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    type IoSlice<'a>: IoSlice<'a>;
 
     fn poll_write(
         self: Pin<&mut Self>,
@@ -74,22 +38,6 @@ pub trait AsyncWrite {
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>>;
-
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    fn poll_write_vectored(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        bufs: &[Self::IoSlice<'_>],
-    ) -> Poll<Result<usize, Self::Error>> {
-        for buf in bufs {
-            if !buf.is_empty() {
-                return self.poll_write(cx, buf);
-            }
-        }
-
-        self.poll_write(cx, &[])
-    }
 }
 
 /// Read bytes.
@@ -99,28 +47,7 @@ pub trait AsyncWrite {
 pub trait Read {
     type Error;
 
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    type IoSliceMut<'a>: IoSliceMut<'a>;
-
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error>;
-
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    fn read_vectored(&mut self, bufs: &mut [Self::IoSliceMut<'_>]) -> Result<usize, Self::Error> {
-        let mut bytes = 0;
-        for buf in bufs {
-            if !buf.is_empty() {
-                let read = self.read(buf)?;
-                bytes += read;
-                if read < buf.len() {
-                    break;
-                }
-            }
-        }
-
-        Ok(bytes)
-    }
 }
 
 /// Write bytes.
@@ -130,26 +57,93 @@ pub trait Read {
 pub trait Write {
     type Error;
 
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    type IoSlice<'a>: IoSlice<'a>;
-
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error>;
 
     fn flush(&mut self) -> Result<(), Self::Error>;
 
-    #[cfg(feature = "unstable")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
-    fn write_vectored(&mut self, bufs: &[Self::IoSlice<'_>]) -> Result<usize, Self::Error> {
-        let mut bytes = 0;
-        for buf in bufs {
-            let written = self.write(buf)?;
-            bytes += written;
-            if written < buf.len() {
-                break;
+    fn write_all(&mut self, mut buf: &[u8]) -> Result<(), Self::Error> {
+        while !buf.is_empty() {
+            match self.write(buf) {
+                Ok(0) => unreachable!("failed to write entire buffer"),
+                Ok(n) => buf = &buf[n..],
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
+    fn write_fmt(&mut self, fmt: core::fmt::Arguments<'_>) -> Result<(), Self::Error> {
+        // Create a shim which translates a Write to a fmt::Write and saves
+        // off I/O errors. instead of discarding them
+        struct Adaptor<'a, T: Write + ?Sized + 'a> {
+            inner: &'a mut T,
+            error: Result<(), T::Error>,
+        }
+
+        impl<T: Write + ?Sized> fmt::Write for Adaptor<'_, T> {
+            fn write_str(&mut self, s: &str) -> fmt::Result {
+                match self.inner.write_all(s.as_bytes()) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        self.error = Err(e);
+                        Err(fmt::Error)
+                    }
+                }
             }
         }
 
-        Ok(bytes)
+        let mut output = Adaptor { inner: self, error: Ok(()) };
+        match fmt::write(&mut output, fmt) {
+            Ok(()) => Ok(()),
+            Err(..) => {
+                // check if the error came from the underlying `Write` or not
+                if output.error.is_err() {
+                    output.error
+                } else {
+                    unreachable!("formatter error")
+                }
+            }
+        }
+    }
+}
+
+impl Read for &[u8] {
+    type Error = Infallible;
+
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        let amt = cmp::min(buf.len(), self.len());
+        let (a, b) = self.split_at(amt);
+
+        // First check if the amount of bytes we want to read is small:
+        // `copy_from_slice` will generally expand to a call to `memcpy`, and
+        // for a single byte the overhead is significant.
+        if amt == 1 {
+            buf[0] = a[0];
+        } else {
+            buf[..amt].copy_from_slice(a);
+        }
+
+        *self = b;
+        Ok(amt)
+    }
+}
+
+impl Write for &mut [u8] {
+    type Error = Infallible;
+
+    fn write(&mut self, data: &[u8]) -> Result<usize, Self::Error> {
+        let amt = cmp::min(data.len(), self.len());
+        let (a, b) = mem::replace(self, &mut []).split_at_mut(amt);
+        a.copy_from_slice(&data[..amt]);
+        *self = b;
+        Ok(amt)
+    }
+
+    fn flush(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn write_all(&mut self, data: &[u8]) -> Result<(), Self::Error> {
+        self.write(data).map(|_| {})
     }
 }

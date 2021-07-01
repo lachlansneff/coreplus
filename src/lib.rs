@@ -8,20 +8,10 @@
 //!
 //! ```toml
 //! [dependencies]
-//! coreplus = { version = "0.1.2", features = ["std"] }
-//! ```
-//!
-//! ## The unstable feature
-//! Enabling the `unstable` feature will add `*_vectored` methods to the [`io::AsyncRead`], [`io::AsyncWrite`],
-//! [`io::Read`], and [`io::Write`] traits.
-//!
-//! ```toml
-//! [dependencies]
-//! coreplus = { version = "0.1.2", features = ["unstable"] }
+//! coreplus = { version = "0.2.0", features = ["std"] }
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "unstable", feature(generic_associated_types))]
 
 pub mod io;
 pub mod net;

@@ -17,14 +17,5 @@ This crate can be used with standard library types by enabling the `std` feature
 
 ```toml
 [dependencies]
-coreplus = { version = "0.1.2", features = ["std"] }
-```
-
-## The unstable feature
-Enabling the `unstable` feature will add `*_vectored` methods to the [`io::AsyncRead`], [`io::AsyncWrite`],
-[`io::Read`], and [`io::Write`] traits.
-
-```toml
-[dependencies]
-coreplus = { version = "0.1.2", features = ["unstable"] }
+coreplus = { version = "0.2.0", features = ["std"] }
 ```

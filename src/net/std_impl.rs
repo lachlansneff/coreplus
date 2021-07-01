@@ -1,56 +1,67 @@
-use crate::net::{AsyncRecvFrom, AsyncSendTo, IpAddr, NetStack, SocketAddr, ToSocketAddrs, MulticastSocket};
+use crate::net::{AsyncRecvFrom, AsyncSendTo, IpAddr, SocketAddr, GetSocketAddrs, MulticastSocket, AddrParseError};
 use core::{
     pin::Pin,
     task::{Context, Poll},
 };
 
-/// Zero-sized struct that represents the network stack shipped
-/// along with the Rust standard library. (e.g. the native network stack)
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
-pub struct StdNetworking;
+/// Zero-sized struct that is used for [`GetSocketAddrs`] for std.
+///
+/// This type is available when the `std` feature is enabled.
+#[derive(Clone, Copy, Default)]
+pub struct StdGetSocketAddrs;
 
-impl NetStack for StdNetworking {
-    type IpAddr = std::net::IpAddr;
-
-    type SocketAddr = std::net::SocketAddr;
-
+impl GetSocketAddrs for StdGetSocketAddrs {
+    type Iter = std::vec::IntoIter<SocketAddr>;
     type Error = std::io::Error;
-}
 
-impl<T: std::net::ToSocketAddrs> ToSocketAddrs<StdNetworking> for T {
-    type Iter = T::Iter;
-
-    fn to_socket_addrs(&self) -> Result<T::Iter, std::io::Error> {
-        self.to_socket_addrs()
+    fn get_socket_addrs(&self, host: &str, port: u16) -> Result<Self::Iter, Self::Error> {
+        let iter = <(&str, u16) as std::net::ToSocketAddrs>::to_socket_addrs(&(host, port))?;
+        Ok(iter.map(Into::<SocketAddr>::into).collect::<Vec<_>>().into_iter())
     }
 }
 
-impl AsyncSendTo<StdNetworking> for std::net::UdpSocket {
+impl From<AddrParseError> for std::io::Error {
+    fn from(_: AddrParseError) -> Self {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "address parsing error",
+        )
+    }
+}
+
+impl AsyncSendTo for std::net::UdpSocket {
+    type Error = std::io::Error;
+
     fn poll_send_to(
         self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
         buf: &[u8],
-        addr: std::net::SocketAddr,
+        addr: SocketAddr,
     ) -> Poll<Result<usize, std::io::Error>> {
+        let addr: std::net::SocketAddr = addr.into();
         Poll::Ready(self.send_to(buf, addr))
     }
 }
 
-impl AsyncRecvFrom<StdNetworking> for std::net::UdpSocket {
+impl AsyncRecvFrom for std::net::UdpSocket {
+    type Error = std::io::Error;
+
     fn poll_recv_from(
         self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
         buf: &mut [u8],
-    ) -> Poll<Result<(usize, std::net::SocketAddr), std::io::Error>> {
-        Poll::Ready(self.recv_from(buf))
+    ) -> Poll<Result<(usize, SocketAddr), std::io::Error>> {
+        Poll::Ready(self.recv_from(buf).map(|(n, addr)| (n, addr.into())))
     }
 }
 
-impl MulticastSocket<StdNetworking> for std::net::UdpSocket {
-    fn join_multicast(&self, addr: std::net::IpAddr) -> Result<(), std::io::Error> {
+impl MulticastSocket for std::net::UdpSocket {
+    type Error = std::io::Error;
+
+    fn join_multicast(&self, addr: IpAddr) -> Result<(), std::io::Error> {
         use std::net::{IpAddr, SocketAddr};
         let local = self.local_addr()?;
-        match &(addr, local) {
+        match &(addr.into(), local) {
             (IpAddr::V4(addr), SocketAddr::V4(local)) => self.join_multicast_v4(addr, local.ip()),
             (IpAddr::V4(addr), SocketAddr::V6(local)) => self.join_multicast_v6(&addr.to_ipv6_mapped(), local.scope_id()),
             (IpAddr::V6(addr), SocketAddr::V6(local)) => self.join_multicast_v6(addr, local.scope_id()),
@@ -61,10 +72,10 @@ impl MulticastSocket<StdNetworking> for std::net::UdpSocket {
         }
     }
 
-    fn leave_multicast(&self, addr: std::net::IpAddr) -> Result<(), std::io::Error> {
+    fn leave_multicast(&self, addr: IpAddr) -> Result<(), std::io::Error> {
         use std::net::{IpAddr, SocketAddr};
         let local = self.local_addr()?;
-        match &(addr, local) {
+        match &(addr.into(), local) {
             (IpAddr::V4(addr), SocketAddr::V4(local)) => self.leave_multicast_v4(addr, local.ip()),
             (IpAddr::V4(addr), SocketAddr::V6(local)) => self.leave_multicast_v6(&addr.to_ipv6_mapped(), local.scope_id()),
             (IpAddr::V6(addr), SocketAddr::V6(local)) => self.leave_multicast_v6(addr, local.scope_id()),
@@ -73,59 +84,5 @@ impl MulticastSocket<StdNetworking> for std::net::UdpSocket {
                 "multicast-addr and local-addr type mismatch",
             ))
         }
-    }
-}
-
-impl IpAddr for std::net::IpAddr {
-    fn is_ipv4(&self) -> bool {
-        self.is_ipv4()
-    }
-
-    fn is_ipv6(&self) -> bool {
-        self.is_ipv6()
-    }
-
-    fn is_loopback(&self) -> bool {
-        self.is_loopback()
-    }
-
-    fn is_multicast(&self) -> bool {
-        self.is_multicast()
-    }
-
-    fn is_unspecified(&self) -> bool {
-        self.is_multicast()
-    }
-}
-
-impl SocketAddr for std::net::SocketAddr {
-    type IpAddr = std::net::IpAddr;
-
-    fn new(ip: Self::IpAddr, port: u16) -> Self {
-        Self::new(ip, port)
-    }
-
-    fn ip(&self) -> Self::IpAddr {
-        self.ip()
-    }
-
-    fn set_ip(&mut self, new_ip: Self::IpAddr) {
-        self.set_ip(new_ip)
-    }
-
-    fn port(&self) -> u16 {
-        self.port()
-    }
-
-    fn set_port(&mut self, new_port: u16) {
-        self.set_port(new_port)
-    }
-
-    fn is_ipv4(&self) -> bool {
-        self.is_ipv4()
-    }
-
-    fn is_ipv6(&self) -> bool {
-        self.is_ipv6()
     }
 }
