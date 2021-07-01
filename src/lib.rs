@@ -8,7 +8,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! coreplus = { version = "0.1.0", features = ["std"] }
+//! coreplus = { version = "0.1.2", features = ["std"] }
 //! ```
 //!
 //! ## The unstable feature
@@ -17,7 +17,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! coreplus = { version = "0.1.0", features = ["unstable"] }
+//! coreplus = { version = "0.1.2", features = ["unstable"] }
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
