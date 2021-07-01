@@ -1,0 +1,17 @@
+[package]
+name = "coreplus"
+version = "0.1.0"
+edition = "2018"
+license = "MIT"
+description = "The batteries for core that you never knew you needed."
+repository = "https://github.com/lachlansneff/coreplus"
+documentation = "https://docs.rs/coreplus"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+std = []
+unstable = []
+
+[dependencies]
