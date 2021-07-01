@@ -588,6 +588,8 @@ impl fmt::Debug for SocketAddrV6 {
 
 /// Do a DNS query to lookup ip addresses associated with a hostname.
 ///
+/// Implement this for your network stack.
+///
 /// This is blocking.
 pub trait GetSocketAddrs {
     type Iter: Iterator<Item = SocketAddr>;
@@ -609,14 +611,7 @@ impl<I: Iterator> OneOrMany<I> {
 
 /// Retrive the addresses associated with a hostname.
 ///
-/// When implementing this for your network stack, it's  recommended to add
-/// the following implementations:
-/// ```rust
-/// impl ToSocketAddrs<YourNetworkStack> for YourSocketAddr { ... }
-/// impl ToSocketAddrs<YourNetworkStack> for (&str, u16) { ... }
-/// impl ToSocketAddrs<YourNetworkStack> for (YourIpAddr, u16) { ... }
-/// impl ToSocketAddrs<YourNetworkStack> for &str { ... }
-/// ```
+/// To use this, you must pass in a type that implements [`GetSocketAddrs`].
 pub trait ToSocketAddrs<T: GetSocketAddrs> {
     /// Converts this object to an iterator of resolved `SocketAddr`s.
     ///

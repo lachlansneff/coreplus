@@ -1,4 +1,4 @@
-//! I/O traits
+//! I/O
 
 use core::{
     cmp,

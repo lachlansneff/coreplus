@@ -1,4 +1,4 @@
-//! Networking traits
+//! Networking
 
 use core::{
     pin::Pin,

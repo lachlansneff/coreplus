@@ -9,13 +9,13 @@ The batteries for core that you never knew you needed: core+
 
 * [`coreplus` documentation](https://docs.rs/coreplus)
 
-Core+ contains traits that make it possible to write `no_std` libraries that
+Core+ contains types that make it possible to write `no_std` libraries that
 are fully generic on the network and I/O stack.
 
 ## Using the standard library
-This crate can be used with standard library types by enabling the `std` feature.
+This crate can support standard library types and traits by enabling the `std` feature.
 
 ```toml
 [dependencies]
-coreplus = { version = "0.2.0", features = ["std"] }
+coreplus = { version = "0.2.1", features = ["std"] }
 ```

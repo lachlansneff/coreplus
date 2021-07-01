@@ -8,7 +8,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! coreplus = { version = "0.2.0", features = ["std"] }
+//! coreplus = { version = "0.2.1", features = ["std"] }
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
